@@ -90,11 +90,6 @@ fn cubic_sample(tex: texture_2d<f32>, samp: sampler, uv: vec2<f32>) -> vec4<f32>
     return color;
 }
 
-// Get texture coordinates based on screen position
-fn get_uv(pos: vec2<f32>) -> vec2<f32> {
-    return vec2<f32>(pos.x * 0.5 + 0.5, 1.0 - (pos.y * 0.5 + 0.5));
-}
-
 @fragment
 fn fs_main(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     // tex_info.x = texture width
@@ -108,8 +103,8 @@ fn fs_main(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
         pos.y / (tex_info.y / tex_info.w)
     );
     
-    // Flip Y coordinate (WebGPU has origin at top-left)
-    let uv = vec2<f32>(bounds_uv.x, 1.0 - bounds_uv.y);
+    // Use proper UV coordinates
+    let uv = vec2<f32>(bounds_uv.x, bounds_uv.y);
     
     // Apply cubic filtering if downsampling
     if (tex_info.z > 1.0 || tex_info.w > 1.0) {
