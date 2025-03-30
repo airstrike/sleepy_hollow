@@ -46,10 +46,18 @@ impl Filter {
     
     /// Creates a shader module for this filter
     pub fn create_shader_module(&self, device: &wgpu::Device) -> wgpu::ShaderModule {
-        device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        // Log that we're creating a shader for a specific filter
+        eprintln!("Creating shader module for filter: {:?}", self);
+        
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some(&self.label("shader")),
             source: wgpu::ShaderSource::Wgsl(self.shader_source().into()),
-        })
+        });
+        
+        // Log that we've created the shader
+        eprintln!("Created shader module: {:?}", shader);
+        
+        shader
     }
 }
 
@@ -120,6 +128,10 @@ pub struct Primitive {
     bounds: Rectangle,
 }
 
+// Define pipeline types for each filter to allow storing them separately in storage
+struct CubicPipeline(Pipeline);
+struct LanczosPipeline(Pipeline);
+
 impl shader::Primitive for Primitive {
     fn prepare(
         &self,
@@ -130,19 +142,39 @@ impl shader::Primitive for Primitive {
         bounds: &Rectangle,
         viewport: &Viewport,
     ) {
-        if !storage.has::<Pipeline>() {
-            storage.store(Pipeline::new(
+        // Check if we have the requested filter's pipeline
+        let has_pipeline = match self.filter {
+            Filter::Cubic => storage.has::<CubicPipeline>(),
+            Filter::Lanczos => storage.has::<LanczosPipeline>(),
+        };
+        
+        // Create the pipeline if it doesn't exist yet
+        if !has_pipeline {
+            eprintln!("Creating new pipeline for filter: {:?}", self.filter);
+            
+            let new_pipeline = Pipeline::new(
                 self.filter,
                 device,
                 format,
                 viewport.physical_size(),
-            ));
+            );
+            
+            // Store it with the appropriate wrapper type
+            match self.filter {
+                Filter::Cubic => storage.store(CubicPipeline(new_pipeline)),
+                Filter::Lanczos => storage.store(LanczosPipeline(new_pipeline)),
+            }
         }
 
         // Use actual bounds from the widget for proper target size
         let target_size = Size::new(bounds.width.round() as u32, bounds.height.round() as u32);
 
-        let pipeline = storage.get_mut::<Pipeline>().unwrap();
+        // Get the appropriate pipeline based on the current filter
+        let pipeline = match self.filter {
+            Filter::Cubic => &mut storage.get_mut::<CubicPipeline>().unwrap().0,
+            Filter::Lanczos => &mut storage.get_mut::<LanczosPipeline>().unwrap().0,
+        };
+        
         eprintln!(
             "Preparing pipeline with:\n\
             - filter: {:?}\n\
@@ -153,6 +185,7 @@ impl shader::Primitive for Primitive {
             - viewport: {viewport:?}",
             self.filter, self.image_size, self.bounds, self.content_fit
         );
+        
         pipeline.prepare(
             device,
             queue,
@@ -171,7 +204,11 @@ impl shader::Primitive for Primitive {
         target: &wgpu::TextureView,
         clip_bounds: &Rectangle<u32>,
     ) {
-        let pipeline = storage.get::<Pipeline>().unwrap();
+        // Get the appropriate pipeline based on the current filter
+        let pipeline = match self.filter {
+            Filter::Cubic => &storage.get::<CubicPipeline>().unwrap().0,
+            Filter::Lanczos => &storage.get::<LanczosPipeline>().unwrap().0,
+        };
 
         pipeline.render(encoder, target, clip_bounds, self.bounds, self.content_fit);
     }
