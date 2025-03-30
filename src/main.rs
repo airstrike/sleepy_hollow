@@ -98,6 +98,29 @@ impl App {
         Subscription::run(stream).map(Message::ChannelEvent)
     }
 
+    fn image_element<'a>(&'a self) -> Element<'a, Message> {
+        // show the rendered image if we have it, using the cubic filter if enabled
+        match &self.render {
+            Some(Render::Success { image, .. }) => responsive(move |size| {
+                if self.cubic {
+                    filter::cubic_filtered_image(
+                        image.raw_data.to_vec(),
+                        image.size,
+                        iced::Size::new(size.width as u32, size.height as u32),
+                    )
+                } else {
+                    let image_handle = image::Handle::from_bytes(image.png_data.clone());
+                    iced::widget::image(image_handle)
+                        .content_fit(ContentFit::Contain)
+                        .width(size.width)
+                        .into()
+                }
+            })
+            .into(),
+            _ => center(text("No image yet")).into(),
+        }
+    }
+
     fn view(&self) -> Element<Message> {
         let header = row![
             container(text("Headless Render Sample")).width(Fill),
@@ -146,31 +169,10 @@ impl App {
                             )
                             .align_right(Fill);
 
-                            // Create image handle from PNG data
-                            let image_element = responsive(move |size| {
-                                if self.cubic {
-                                    // Use our custom cubic filter with raw image data
-                                    filter::cubic_filtered_image(
-                                        image.raw_data.to_vec(),                                // Use raw RGBA data
-                                        image.size, // Original image size
-                                        iced::Size::new(size.width as u32, size.height as u32), // Target size
-                                    )
-                                    .into()
-                                } else {
-                                    // Use the standard iced image with linear filtering
-                                    iced::widget::image(image::Handle::from_bytes(
-                                        image.png_data.clone(),
-                                    ))
-                                    .content_fit(ContentFit::Contain)
-                                    .width(size.width)
-                                    .into()
-                                }
-                            });
-
                             stack![
                                 center(column![
                                     container(
-                                        container(stack![image_element])
+                                        container(stack![self.image_element()])
                                             .width(Fill)
                                             .padding(10)
                                             .style(container::rounded_box),
@@ -206,18 +208,12 @@ impl App {
                         )
                         .align_right(Fill);
 
-                        let image_handle = image::Handle::from_bytes(image.png_data.clone());
-
                         center(column![
                             container(
-                                container(stack![
-                                    iced::widget::image(image_handle)
-                                        .content_fit(ContentFit::Contain)
-                                        .width(Fill)
-                                ])
-                                .width(Fill)
-                                .padding(10)
-                                .style(container::rounded_box),
+                                container(stack![self.image_element()])
+                                    .width(Fill)
+                                    .padding(10)
+                                    .style(container::rounded_box),
                             )
                             .width(Fill)
                             .height(600),
