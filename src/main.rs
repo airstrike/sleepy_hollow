@@ -103,7 +103,7 @@ impl App {
         match &self.render {
             Some(Render::Success { image, .. }) => responsive(move |size| {
                 if self.cubic {
-                    filter::cubic_filtered_image(
+                    filter::cubic(
                         image.raw_data.to_vec(),
                         image.size,
                         iced::Size::new(size.width as u32, size.height as u32),

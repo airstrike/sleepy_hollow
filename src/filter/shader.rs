@@ -1,13 +1,15 @@
+use iced::mouse;
 use iced::wgpu;
 use iced::wgpu::util::DeviceExt;
 use iced::widget::shader::{self, Viewport};
-use iced::{Rectangle, Size, mouse};
+use iced::{ContentFit, Point, Rectangle, Size};
 
 /// A shader that applies a high-quality cubic filter for downsampling
 pub struct Shader {
     image_data: Vec<u8>,
     image_size: Size<u32>,
     target_size: Size<u32>,
+    content_fit: ContentFit,
 }
 
 impl Shader {
@@ -16,7 +18,14 @@ impl Shader {
             image_data,
             image_size,
             target_size,
+            content_fit: ContentFit::Cover,
         }
+    }
+
+    /// Set the content fit for the image
+    pub fn content_fit(mut self, content_fit: ContentFit) -> Self {
+        self.content_fit = content_fit;
+        self
     }
 }
 
@@ -30,10 +39,12 @@ impl<Message> shader::Program<Message> for Shader {
         _cursor: mouse::Cursor,
         bounds: Rectangle,
     ) -> Self::Primitive {
+        eprintln!("Drawing shader with bounds: {bounds:?}");
         Primitive {
             image_data: self.image_data.clone(),
             image_size: self.image_size,
             target_size: self.target_size,
+            content_fit: self.content_fit,
             bounds,
         }
     }
@@ -44,6 +55,7 @@ pub struct Primitive {
     image_data: Vec<u8>,
     image_size: Size<u32>,
     target_size: Size<u32>,
+    content_fit: ContentFit,
     bounds: Rectangle,
 }
 
@@ -84,7 +96,15 @@ impl shader::Primitive for Primitive {
         let scale_x = self.image_size.width as f32 / self.target_size.width as f32;
         let scale_y = self.image_size.height as f32 / self.target_size.height as f32;
 
-        pipeline.render(encoder, target, clip_bounds, self.bounds, scale_x, scale_y);
+        pipeline.render(
+            encoder,
+            target,
+            clip_bounds,
+            self.bounds,
+            scale_x,
+            scale_y,
+            self.content_fit,
+        );
     }
 }
 
@@ -327,11 +347,50 @@ impl Pipeline {
         encoder: &mut wgpu::CommandEncoder,
         target: &wgpu::TextureView,
         clip_bounds: &Rectangle<u32>,
-        _bounds: Rectangle,
-        _scale_x: f32,
-        _scale_y: f32,
+        bounds: Rectangle,
+        scale_x: f32,
+        scale_y: f32,
+        content_fit: ContentFit,
     ) {
         if let Some(bind_group) = &self.bind_group {
+            // Calculate image and target sizes
+            let image_size = Size::new(
+                self.texture.as_ref().unwrap().size().width as f32,
+                self.texture.as_ref().unwrap().size().height as f32,
+            );
+
+            // Apply ContentFit to determine the actual rendering size
+            let fitted_size = content_fit.fit(image_size, bounds.size());
+
+            // Calculate position to center the image within bounds
+            let x = bounds.x + (bounds.width - fitted_size.width) / 2.0;
+            let y = bounds.y + (bounds.height - fitted_size.height) / 2.0;
+
+            // Create rectangle for the fitted image
+            let fitted_bounds = Rectangle {
+                x,
+                y,
+                width: fitted_size.width,
+                height: fitted_size.height,
+            };
+
+            // Determine actual rendering area by intersecting with clip bounds
+            let render_bounds = if let Some(intersection) =
+                fitted_bounds.intersection(&Rectangle::new(
+                    Point::new(clip_bounds.x as f32, clip_bounds.y as f32),
+                    Size::new(clip_bounds.width as f32, clip_bounds.height as f32),
+                )) {
+                Rectangle {
+                    x: intersection.x.round() as u32,
+                    y: intersection.y.round() as u32,
+                    width: intersection.width.round() as u32,
+                    height: intersection.height.round() as u32,
+                }
+            } else {
+                return; // Nothing to render if no intersection
+            };
+
+            // Begin render pass
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("cubic_filter_render_pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -347,16 +406,17 @@ impl Pipeline {
                 timestamp_writes: None,
             });
 
+            // Set up the pipeline and resources
             render_pass.set_pipeline(&self.pipeline);
             render_pass.set_bind_group(0, bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
 
-            // Set scissor rectangle for clipping
+            // Set scissor rectangle for clipping to the fitted bounds
             render_pass.set_scissor_rect(
-                clip_bounds.x,
-                clip_bounds.y,
-                clip_bounds.width,
-                clip_bounds.height,
+                render_bounds.x,
+                render_bounds.y,
+                render_bounds.width,
+                render_bounds.height,
             );
 
             // Draw the full-screen quad (4 vertices in a triangle strip)

@@ -38,10 +38,6 @@ fn mitchell(t: f32) -> f32 {
     }
 }
 
-// Get texture coordinates based on screen position
-fn get_uv(pos: vec2<f32>) -> vec2<f32> {
-    return vec2<f32>(pos.x * 0.5 + 0.5, 1.0 - (pos.y * 0.5 + 0.5));
-}
 
 // Sample the texture using cubic filtering
 fn cubic_sample(tex: texture_2d<f32>, samp: sampler, uv: vec2<f32>) -> vec4<f32> {
@@ -94,17 +90,27 @@ fn cubic_sample(tex: texture_2d<f32>, samp: sampler, uv: vec2<f32>) -> vec4<f32>
     return color;
 }
 
-// Fragment shader
+// Get texture coordinates based on screen position
+fn get_uv(pos: vec2<f32>) -> vec2<f32> {
+    return vec2<f32>(pos.x * 0.5 + 0.5, 1.0 - (pos.y * 0.5 + 0.5));
+}
+
 @fragment
 fn fs_main(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
-    // Get texture coordinates
-    let uv = get_uv(pos.xy / vec2<f32>(textureDimensions(texture)));
+    // Convert position to UV coordinates in [0,1] range
+    let tex_dims = vec2<f32>(f32(textureDimensions(texture).x), f32(textureDimensions(texture).y));
+    let view_dims = vec2<f32>(tex_dims.x / tex_info.z, tex_dims.y / tex_info.w);
     
-    // If we're downscaling, use cubic filtering
+    // Normalize coordinates based on view dimensions
+    let uv = vec2<f32>(
+        pos.x / view_dims.x,        // No flipping on X axis
+        1.0 - (pos.y / view_dims.y)  // Flip Y axis (WebGPU has Y=0 at top)
+    );
+    
+    // Apply cubic filtering if downsampling
     if (tex_info.z > 1.0 || tex_info.w > 1.0) {
         return cubic_sample(texture, tex_sampler, uv);
     } else {
-        // If not downscaling, just use linear sampling
         return textureSample(texture, tex_sampler, uv);
     }
 }
