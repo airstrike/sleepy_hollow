@@ -8,16 +8,14 @@ use iced::{ContentFit, Point, Rectangle, Size};
 pub struct Shader {
     image_data: Vec<u8>,
     image_size: Size<u32>,
-    target_size: Size<u32>,
     content_fit: ContentFit,
 }
 
 impl Shader {
-    pub fn new(image_data: Vec<u8>, image_size: Size<u32>, target_size: Size<u32>) -> Self {
+    pub fn new(image_data: Vec<u8>, image_size: Size<u32>) -> Self {
         Self {
             image_data,
             image_size,
-            target_size,
             content_fit: ContentFit::Cover,
         }
     }
@@ -43,7 +41,6 @@ impl<Message> shader::Program<Message> for Shader {
         Primitive {
             image_data: self.image_data.clone(),
             image_size: self.image_size,
-            target_size: self.target_size,
             content_fit: self.content_fit,
             bounds,
         }
@@ -54,7 +51,6 @@ impl<Message> shader::Program<Message> for Shader {
 pub struct Primitive {
     image_data: Vec<u8>,
     image_size: Size<u32>,
-    target_size: Size<u32>,
     content_fit: ContentFit,
     bounds: Rectangle,
 }
@@ -66,12 +62,15 @@ impl shader::Primitive for Primitive {
         queue: &wgpu::Queue,
         format: wgpu::TextureFormat,
         storage: &mut shader::Storage,
-        _bounds: &Rectangle,
+        bounds: &Rectangle,
         viewport: &Viewport,
     ) {
         if !storage.has::<Pipeline>() {
             storage.store(Pipeline::new(device, format, viewport.physical_size()));
         }
+
+        // Use actual bounds from the widget for proper target size
+        let target_size = Size::new(bounds.width.round() as u32, bounds.height.round() as u32);
 
         let pipeline = storage.get_mut::<Pipeline>().unwrap();
         pipeline.prepare(
@@ -79,7 +78,9 @@ impl shader::Primitive for Primitive {
             queue,
             &self.image_data,
             self.image_size,
-            self.target_size,
+            target_size,
+            self.bounds,
+            self.content_fit,
         );
     }
 
@@ -92,19 +93,7 @@ impl shader::Primitive for Primitive {
     ) {
         let pipeline = storage.get::<Pipeline>().unwrap();
 
-        // Scale factors for shader
-        let scale_x = self.image_size.width as f32 / self.target_size.width as f32;
-        let scale_y = self.image_size.height as f32 / self.target_size.height as f32;
-
-        pipeline.render(
-            encoder,
-            target,
-            clip_bounds,
-            self.bounds,
-            scale_x,
-            scale_y,
-            self.content_fit,
-        );
+        pipeline.render(encoder, target, clip_bounds, self.bounds, self.content_fit);
     }
 }
 
@@ -117,10 +106,11 @@ struct Pipeline {
     bind_group: Option<wgpu::BindGroup>,
     vertex_buffer: wgpu::Buffer,
     uniform_buffer: wgpu::Buffer,
+    target_size: Size<u32>,
 }
 
 impl Pipeline {
-    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat, _viewport: Size<u32>) -> Self {
+    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat, viewport: Size<u32>) -> Self {
         // Create bind group layout
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("cubic_filter_bind_group_layout"),
@@ -179,7 +169,7 @@ impl Pipeline {
                 module: &shader,
                 entry_point: Some("vs_main"),
                 buffers: &[],
-                compilation_options: wgpu::PipelineCompilationOptions::default(), // Add this
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -189,7 +179,7 @@ impl Pipeline {
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
-                compilation_options: wgpu::PipelineCompilationOptions::default(), // Add this
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleStrip,
@@ -207,7 +197,7 @@ impl Pipeline {
                 alpha_to_coverage_enabled: false,
             },
             multiview: None,
-            cache: None, // Add this
+            cache: None,
         });
 
         // Create vertex buffer for full-screen quad
@@ -251,6 +241,7 @@ impl Pipeline {
             bind_group: None,
             vertex_buffer,
             uniform_buffer,
+            target_size: viewport,
         }
     }
 
@@ -261,7 +252,12 @@ impl Pipeline {
         image_data: &[u8],
         image_size: Size<u32>,
         target_size: Size<u32>,
+        bounds: Rectangle,
+        content_fit: ContentFit,
     ) {
+        // Store the target size for later use in render()
+        self.target_size = target_size;
+
         // Create the texture
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("cubic_filter_texture"),
@@ -302,14 +298,21 @@ impl Pipeline {
             },
         );
 
-        // Update uniform buffer with texture dimensions and scale
-        let scale_x = image_size.width as f32 / target_size.width as f32;
-        let scale_y = image_size.height as f32 / target_size.height as f32;
+        // Calculate fitted image size based on content_fit
+        let image_size_f32 = Size::new(image_size.width as f32, image_size.height as f32);
+        let bounds_size = bounds.size();
+        let fitted_size = content_fit.fit(image_size_f32, bounds_size);
+
+        // Calculate actual scale factors based on the fitted size
+        let actual_scale_x = image_size_f32.width / fitted_size.width;
+        let actual_scale_y = image_size_f32.height / fitted_size.height;
+
+        // Update the uniform buffer with correct scaling factors
         let uniforms = [
             image_size.width as f32,
             image_size.height as f32,
-            scale_x,
-            scale_y,
+            actual_scale_x,
+            actual_scale_y,
         ];
         queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&uniforms));
 
@@ -348,12 +351,10 @@ impl Pipeline {
         target: &wgpu::TextureView,
         clip_bounds: &Rectangle<u32>,
         bounds: Rectangle,
-        scale_x: f32,
-        scale_y: f32,
         content_fit: ContentFit,
     ) {
         if let Some(bind_group) = &self.bind_group {
-            // Calculate image and target sizes
+            // Calculate image size
             let image_size = Size::new(
                 self.texture.as_ref().unwrap().size().width as f32,
                 self.texture.as_ref().unwrap().size().height as f32,

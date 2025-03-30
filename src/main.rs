@@ -103,11 +103,7 @@ impl App {
         match &self.render {
             Some(Render::Success { image, .. }) => responsive(move |size| {
                 if self.cubic {
-                    filter::cubic(
-                        image.raw_data.to_vec(),
-                        image.size,
-                        iced::Size::new(size.width as u32, size.height as u32),
-                    )
+                    filter::cubic(image.raw_data.to_vec(), image.size)
                 } else {
                     let image_handle = image::Handle::from_bytes(image.png_data.clone());
                     iced::widget::image(image_handle)

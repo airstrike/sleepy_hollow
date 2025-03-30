@@ -97,15 +97,19 @@ fn get_uv(pos: vec2<f32>) -> vec2<f32> {
 
 @fragment
 fn fs_main(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
-    // Convert position to UV coordinates in [0,1] range
-    let tex_dims = vec2<f32>(f32(textureDimensions(texture).x), f32(textureDimensions(texture).y));
-    let view_dims = vec2<f32>(tex_dims.x / tex_info.z, tex_dims.y / tex_info.w);
+    // tex_info.x = texture width
+    // tex_info.y = texture height
+    // tex_info.z = scale_x 
+    // tex_info.w = scale_y
     
-    // Normalize coordinates based on view dimensions
-    let uv = vec2<f32>(
-        pos.x / view_dims.x,        // No flipping on X axis
-        1.0 - (pos.y / view_dims.y)  // Flip Y axis (WebGPU has Y=0 at top)
+    // Convert position to normalized coordinates in the output space
+    let bounds_uv = vec2<f32>(
+        pos.x / (tex_info.x / tex_info.z),
+        pos.y / (tex_info.y / tex_info.w)
     );
+    
+    // Flip Y coordinate (WebGPU has origin at top-left)
+    let uv = vec2<f32>(bounds_uv.x, 1.0 - bounds_uv.y);
     
     // Apply cubic filtering if downsampling
     if (tex_info.z > 1.0 || tex_info.w > 1.0) {

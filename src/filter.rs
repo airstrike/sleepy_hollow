@@ -15,13 +15,9 @@ where
 }
 
 /// Utility function to create a cubic filtered image element
-pub fn cubic<Message>(
-    image_data: Vec<u8>,
-    image_size: Size<u32>,
-    target_size: Size<u32>,
-) -> Element<'static, Message>
+pub fn cubic<Message>(image_data: Vec<u8>, image_size: Size<u32>) -> Element<'static, Message>
 where
     Message: 'static,
 {
-    shader::Shader::new(image_data, image_size, target_size).into()
+    shader::Shader::new(image_data, image_size).into()
 }
