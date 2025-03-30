@@ -108,10 +108,16 @@ impl App {
                             .content_fit(ContentFit::Contain),
                     )
                 } else {
+                    eprintln!(
+                        "Drawing PNG with image widget\n\
+                        - image size: {:?}\n\
+                        - container size: {:?}",
+                        image.size, size
+                    );
                     let image_handle = image::Handle::from_bytes(image.png_data.clone());
                     iced::widget::image(image_handle)
                         .content_fit(ContentFit::Cover)
-                        .width(size.width)
+                        .width(Fill)
                         .into()
                 }
             })
