@@ -2,7 +2,7 @@ use iced::Alignment::Center;
 use iced::futures::channel::mpsc;
 use iced::time::Duration;
 use iced::widget::{
-    button, center, column, container, image, responsive, row, stack, text, toggler,
+    button, center, column, container, image, pick_list, responsive, row, stack, text, toggler,
 };
 use iced::{ContentFit, Element, Fill, Subscription, Task};
 use sipper::{Never, Sipper, StreamExt, sipper};
@@ -45,12 +45,14 @@ struct App {
     render: Option<Render>,
     queued: Option<Instant>,
     sender: Option<mpsc::Sender<Command>>,
+    filter: filter::Filter,
     cubic: bool,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
     Render,
+    PickFilter(filter::Filter),
     ToggleCubic(bool),
     ChannelEvent(Event),
 }
@@ -63,6 +65,10 @@ impl App {
                     self.queued = Some(Instant::now());
                     let _ = sender.try_send(Command::RenderSample);
                 }
+                Task::none()
+            }
+            Message::PickFilter(filter) => {
+                self.filter = filter;
                 Task::none()
             }
             Message::ToggleCubic(b) => {
@@ -104,7 +110,7 @@ impl App {
             Some(Render::Success { image, .. }) => responsive(move |size| {
                 if self.cubic {
                     Element::from(
-                        filter::cubic(image.raw_data.to_vec(), image.size)
+                        filter::filtered(image.raw_data.to_vec(), image.size, self.filter)
                             .content_fit(ContentFit::Contain),
                     )
                 } else {
@@ -115,10 +121,12 @@ impl App {
                         image.size, size
                     );
                     let image_handle = image::Handle::from_bytes(image.png_data.clone());
-                    iced::widget::image(image_handle)
-                        .content_fit(ContentFit::Contain)
-                        .width(Fill)
-                        .into()
+                    center(
+                        iced::widget::image(image_handle)
+                            .content_fit(ContentFit::Contain)
+                            .width(Fill),
+                    )
+                    .into()
                 }
             })
             .into(),
@@ -128,11 +136,40 @@ impl App {
 
     fn view(&self) -> Element<Message> {
         let header = row![
-            container(text("Headless Render Sample")).width(Fill),
-            toggler(self.cubic)
-                .label("Cubic downsampling")
-                .on_toggle(Message::ToggleCubic),
-            button("Generate").on_press(Message::Render)
+            container(text("𝓢𝓵𝓮𝓮𝓹𝔂 𝓗𝓸𝓵𝓵𝓸𝔀").shaping(text::Shaping::Advanced))
+                .width(Fill)
+                .padding(5),
+            container(
+                row![
+                    toggler(self.cubic)
+                        .label("Use shader")
+                        .on_toggle(Message::ToggleCubic),
+                    pick_list(filter::Filter::ALL, Some(self.filter), Message::PickFilter)
+                ]
+                .spacing(15)
+                .align_y(Center)
+            )
+            .padding([5, 10])
+            .style(|theme: &iced::Theme| {
+                container::Style {
+                    background: Some(
+                        theme
+                            .extended_palette()
+                            .primary
+                            .strong
+                            .color
+                            .scale_alpha(0.25)
+                            .into(),
+                    ),
+                    text_color: Some(theme.extended_palette().primary.base.color),
+                    border: iced::Border {
+                        radius: 5.0.into(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }
+            }),
+            container(button("Generate").on_press(Message::Render)).padding(5)
         ]
         .padding([0, 20])
         .spacing(10)

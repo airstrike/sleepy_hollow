@@ -8,16 +8,55 @@ use iced::wgpu::util::DeviceExt;
 use iced::widget::shader::{self, Viewport};
 use iced::{ContentFit, Element, Fill, Rectangle, Size};
 
-/// Utility function to create a cubic filtered image element
-pub fn cubic(image_data: Vec<u8>, image_size: Size<u32>) -> Shader {
-    Shader::new(image_data, image_size)
+/// Utility function to create a filtered image element with the specified filter
+pub fn filtered(image_data: Vec<u8>, image_size: Size<u32>, filter: Filter) -> Shader {
+    Shader::new(image_data, image_size).filter(filter)
 }
 
-#[derive(Debug, Clone, Default, Copy)]
+#[derive(Debug, Clone, Default, Copy, PartialEq)]
 pub enum Filter {
     Cubic,
     #[default]
     Lanczos,
+}
+
+impl Filter {
+    pub const ALL: [Filter; 2] = [Filter::Cubic, Filter::Lanczos];
+    
+    /// Returns the name of the filter as a string
+    pub fn name(&self) -> &'static str {
+        match self {
+            Filter::Cubic => "cubic",
+            Filter::Lanczos => "lanczos",
+        }
+    }
+    
+    /// Generates a label for a specific component with the filter name
+    pub fn label(&self, component: &str) -> String {
+        format!("{}_{}_filter", self.name(), component)
+    }
+    
+    /// Returns the shader source code for this filter
+    pub fn shader_source(&self) -> &'static str {
+        match self {
+            Filter::Cubic => include_str!("filter/cubic.wgsl"),
+            Filter::Lanczos => include_str!("filter/lanczos.wgsl"),
+        }
+    }
+    
+    /// Creates a shader module for this filter
+    pub fn create_shader_module(&self, device: &wgpu::Device) -> wgpu::ShaderModule {
+        device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some(&self.label("shader")),
+            source: wgpu::ShaderSource::Wgsl(self.shader_source().into()),
+        })
+    }
+}
+
+impl std::fmt::Display for Filter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
 }
 
 /// A shader that applies a high-quality cubic filter for downsampling
@@ -41,6 +80,12 @@ impl Shader {
     /// Set the content fit for the image
     pub fn content_fit(mut self, content_fit: ContentFit) -> Self {
         self.content_fit = content_fit;
+        self
+    }
+    
+    /// Set the filter to use for downsampling
+    pub fn filter(mut self, filter: Filter) -> Self {
+        self.filter = filter;
         self
     }
 }
@@ -154,7 +199,7 @@ impl Pipeline {
     ) -> Self {
         // Create bind group layout
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("cubic_filter_bind_group_layout"),
+            label: Some(&filter.label("bind_group_layout")),
             entries: &[
                 // Texture binding
                 wgpu::BindGroupLayoutEntry {
@@ -188,23 +233,19 @@ impl Pipeline {
             ],
         });
 
-        // Create shader
-        let shader_source = include_str!("filter/cubic.wgsl");
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("cubic_filter_shader"),
-            source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-        });
+        // Create shader using the Filter's method
+        let shader = filter.create_shader_module(device);
 
         // Create pipeline layout
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("cubic_filter_pipeline_layout"),
+            label: Some(&filter.label("pipeline_layout")),
             bind_group_layouts: &[&bind_group_layout],
             push_constant_ranges: &[],
         });
 
         // Create vertex buffer for full-screen quad with positions and UVs
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("cubic_filter_vertex_buffer"),
+            label: Some(&filter.label("vertex_buffer")),
             contents: bytemuck::cast_slice(&[
                 // Positions       // UVs (these aren't actually used since they're hardcoded in the shader)
                 -1.0f32, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0,
@@ -214,7 +255,7 @@ impl Pipeline {
 
         // For the RenderPipelineDescriptor, add the cache field
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("cubic_filter_pipeline"),
+            label: Some(&filter.label("pipeline")),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
@@ -253,7 +294,7 @@ impl Pipeline {
 
         // Create uniform buffer for texture dimensions and scale
         let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("cubic_filter_uniform_buffer"),
+            label: Some(&filter.label("uniform_buffer")),
             size: 16, // 4 f32 values: width, height, scale_x, scale_y
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
@@ -261,7 +302,7 @@ impl Pipeline {
 
         // Create sampler
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("cubic_filter_sampler"),
+            label: Some(&filter.label("sampler")),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
@@ -300,7 +341,7 @@ impl Pipeline {
 
         // Create the texture
         let texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("cubic_filter_texture"),
+            label: Some(&self.filter.label("texture")),
             size: wgpu::Extent3d {
                 width: image_size.width,
                 height: image_size.height,
@@ -363,7 +404,7 @@ impl Pipeline {
 
         // Create bind group
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("cubic_filter_bind_group"),
+            label: Some(&self.filter.label("bind_group")),
             layout: &self.bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
@@ -430,7 +471,7 @@ impl Pipeline {
 
             // Begin render pass
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("cubic_filter_render_pass"),
+                label: Some(&self.filter.label("render_pass")),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: target,
                     resolve_target: None,
