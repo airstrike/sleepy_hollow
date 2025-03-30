@@ -35,23 +35,25 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     return output;
 }
 
-// Lanczos filter implementation (a=3)
+// Constants for Lanczos filter
+const PI: f32 = 3.14159265359;
+const LANCZOS_A: f32 = 2.0; // Lanczos-2 filter (good balance of quality and speed)
+
+// Lanczos filter kernel calculation
 fn lanczos(x: f32) -> f32 {
-    let a: f32 = 3.0; // Lanczos parameter (support width)
-    
     let abs_x = abs(x);
     
     if (abs_x < 0.0001) {
         return 1.0;
-    } else if (abs_x < a) {
-        let pi_x = 3.14159265359 * abs_x;
-        return a * sin(pi_x) * sin(pi_x / a) / (pi_x * pi_x);
+    } else if (abs_x < LANCZOS_A) {
+        let pi_x = PI * abs_x;
+        return (LANCZOS_A * sin(pi_x) * sin(pi_x / LANCZOS_A)) / (pi_x * pi_x);
     } else {
         return 0.0;
     }
 }
 
-// Sample the texture using Lanczos filtering
+// Optimized Lanczos filter for clean image downsampling
 fn lanczos_sample(tex: texture_2d<f32>, samp: sampler, uv: vec2<f32>) -> vec4<f32> {
     // Get texture dimensions
     let width = tex_info.x;
@@ -64,36 +66,68 @@ fn lanczos_sample(tex: texture_2d<f32>, samp: sampler, uv: vec2<f32>) -> vec4<f3
     // Calculate the fractional offset
     let offset = pixel - center;
     
-    // For a=3 Lanczos, sample 6x6 grid of texels (from -2 to 3)
+    // Sample size based on Lanczos parameter
+    let radius = i32(ceil(LANCZOS_A));
+    
+    // Precompute weights for better numerical stability
+    var weights_x: array<f32, 5>; // Large enough for LANCZOS_A = 2
+    var weights_y: array<f32, 5>; 
+    
+    // Populate weights for x dimension
+    for (var i = 0; i < 2*radius+1; i++) {
+        if (i < 5) { // Safety check for array bounds
+            weights_x[i] = lanczos(f32(i - radius) - offset.x);
+        }
+    }
+    
+    // Populate weights for y dimension
+    for (var i = 0; i < 2*radius+1; i++) {
+        if (i < 5) { // Safety check for array bounds
+            weights_y[i] = lanczos(f32(i - radius) - offset.y);
+        }
+    }
+    
+    // Accumulate weighted samples
     var color = vec4<f32>(0.0);
     var weight_sum = 0.0;
     
-    for (var y: i32 = -2; y <= 3; y++) {
-        let y_dist = abs(f32(y) - offset.y);
-        let y_weight = lanczos(y_dist);
+    for (var y = 0; y < 2*radius+1; y++) {
+        if (y >= 5) { continue; } // Safety check for array bounds
+        let y_weight = weights_y[y];
+        if (y_weight == 0.0) { continue; }
         
-        for (var x: i32 = -2; x <= 3; x++) {
-            let x_dist = abs(f32(x) - offset.x);
-            let x_weight = lanczos(x_dist);
+        for (var x = 0; x < 2*radius+1; x++) {
+            if (x >= 5) { continue; } // Safety check for array bounds
+            let x_weight = weights_x[x];
+            if (x_weight == 0.0) { continue; }
             
+            // Calculate combined weight
             let weight = x_weight * y_weight;
             
-            // Calculate normalized texture coordinates
-            let u = (center.x + f32(x) + 0.5) / width;
-            let v = (center.y + f32(y) + 0.5) / height;
+            // Calculate texture coordinates
+            let sample_x = center.x + f32(x - radius) + 0.5;
+            let sample_y = center.y + f32(y - radius) + 0.5;
+            let u = sample_x / width;
+            let v = sample_y / height;
             
-            // Sample the texture and apply weight
-            color += textureSampleLevel(tex, samp, vec2<f32>(u, v), 0.0) * weight;
+            // Clamp to valid texture coordinates
+            let clamped_u = clamp(u, 0.0, 1.0);
+            let clamped_v = clamp(v, 0.0, 1.0);
+            
+            // Sample and accumulate
+            let texel = textureSampleLevel(tex, samp, vec2<f32>(clamped_u, clamped_v), 0.0);
+            color += texel * weight;
             weight_sum += weight;
         }
     }
     
-    // Normalize result (in case weights don't sum exactly to 1.0)
-    if (weight_sum > 0.0) {
-        return color / weight_sum;
-    } else {
-        return textureSample(tex, tex_sampler, uv);
+    // Handle edge case with zero weight (shouldn't happen with proper implementation)
+    if (weight_sum < 0.0001) {
+        return vec4<f32>(1.0, 0.0, 1.0, 1.0); // Magenta for debugging
     }
+    
+    // Normalize and return final color
+    return color / weight_sum;
 }
 
 @fragment

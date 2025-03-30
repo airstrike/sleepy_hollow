@@ -35,10 +35,11 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     return output;
 }
 
-// Implementation of Mitchell-Netravali cubic filter
+// Implementation of a sharper cubic filter for better downsampling
 fn mitchell(t: f32) -> f32 {
-    let B: f32 = 1.0 / 3.0; // Mitchell-Netravali parameters
-    let C: f32 = 1.0 / 3.0;
+    // Standard Mitchell-Netravali parameters: B=1/3, C=1/3
+    let B: f32 = 1.0/3.0;
+    let C: f32 = 1.0/3.0;
     
     let abs_t = abs(t);
     
@@ -88,23 +89,27 @@ fn cubic_sample(tex: texture_2d<f32>, samp: sampler, uv: vec2<f32>) -> vec4<f32>
     
     // Sample 16 texels from the texture
     var color = vec4<f32>(0.0);
+    var weight_sum = 0.0;
     
     for (var y: i32 = -1; y <= 2; y++) {
         let v_weight = w[1][y + 1];
         
         for (var x: i32 = -1; x <= 2; x++) {
             let h_weight = w[0][x + 1];
+            let weight = h_weight * v_weight;
             
             // Calculate normalized texture coordinates
             let u = (center.x + f32(x) + 0.5) / width;
             let v = (center.y + f32(y) + 0.5) / height;
             
             // Sample the texture and apply weight
-            color += textureSampleLevel(tex, samp, vec2<f32>(u, v), 0.0) * h_weight * v_weight;
+            color += textureSampleLevel(tex, samp, vec2<f32>(u, v), 0.0) * weight;
+            weight_sum += weight;
         }
     }
     
-    return color;
+    // Ensure proper normalization (important for modified parameters)
+    return color / weight_sum;
 }
 
 @fragment
