@@ -116,7 +116,7 @@ impl App {
                     );
                     let image_handle = image::Handle::from_bytes(image.png_data.clone());
                     iced::widget::image(image_handle)
-                        .content_fit(ContentFit::Cover)
+                        .content_fit(ContentFit::Contain)
                         .width(Fill)
                         .into()
                 }
