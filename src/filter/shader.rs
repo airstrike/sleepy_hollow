@@ -2,7 +2,7 @@ use iced::mouse;
 use iced::wgpu;
 use iced::wgpu::util::DeviceExt;
 use iced::widget::shader::{self, Viewport};
-use iced::{ContentFit, Point, Rectangle, Size};
+use iced::{ContentFit, Rectangle, Size};
 
 /// A shader that applies a high-quality cubic filter for downsampling
 pub struct Shader {
@@ -73,6 +73,15 @@ impl shader::Primitive for Primitive {
         let target_size = Size::new(bounds.width.round() as u32, bounds.height.round() as u32);
 
         let pipeline = storage.get_mut::<Pipeline>().unwrap();
+        eprintln!(
+            "Preparing pipeline with:\n\
+            - image_size: {:?}\n\
+            - target_size: {target_size:?}\n\
+            - bounds: {:?}\n\
+            - content_fit: {:?}\n\
+            - viewport: {viewport:?}",
+            self.image_size, self.bounds, self.content_fit
+        );
         pipeline.prepare(
             device,
             queue,
@@ -161,6 +170,16 @@ impl Pipeline {
             push_constant_ranges: &[],
         });
 
+        // Create vertex buffer for full-screen quad with positions and UVs
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("cubic_filter_vertex_buffer"),
+            contents: bytemuck::cast_slice(&[
+                // Positions       // UVs (these aren't actually used since they're hardcoded in the shader)
+                -1.0f32, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0,
+            ]),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
         // For the RenderPipelineDescriptor, add the cache field
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("cubic_filter_pipeline"),
@@ -198,18 +217,6 @@ impl Pipeline {
             },
             multiview: None,
             cache: None,
-        });
-
-        // Create vertex buffer for full-screen quad
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("cubic_filter_vertex_buffer"),
-            contents: bytemuck::cast_slice(&[
-                -1.0f32, -1.0, // bottom-left
-                1.0, -1.0, // bottom-right
-                -1.0, 1.0, // top-left
-                1.0, 1.0, // top-right
-            ]),
-            usage: wgpu::BufferUsages::VERTEX,
         });
 
         // Create uniform buffer for texture dimensions and scale
@@ -307,6 +314,11 @@ impl Pipeline {
         let actual_scale_x = image_size_f32.width / fitted_size.width;
         let actual_scale_y = image_size_f32.height / fitted_size.height;
 
+        eprintln!(
+            "Image scaling factors: scale_x={}, scale_y={}",
+            actual_scale_x, actual_scale_y
+        );
+
         // Update the uniform buffer with correct scaling factors
         let uniforms = [
             image_size.width as f32,
@@ -375,20 +387,12 @@ impl Pipeline {
                 height: fitted_size.height,
             };
 
-            // Determine actual rendering area by intersecting with clip bounds
-            let render_bounds = if let Some(intersection) =
-                fitted_bounds.intersection(&Rectangle::new(
-                    Point::new(clip_bounds.x as f32, clip_bounds.y as f32),
-                    Size::new(clip_bounds.width as f32, clip_bounds.height as f32),
-                )) {
-                Rectangle {
-                    x: intersection.x.round() as u32,
-                    y: intersection.y.round() as u32,
-                    width: intersection.width.round() as u32,
-                    height: intersection.height.round() as u32,
-                }
-            } else {
-                return; // Nothing to render if no intersection
+            // Convert fitted bounds to viewport-space units
+            let render_bounds = Rectangle {
+                x: fitted_bounds.x.round() as u32,
+                y: fitted_bounds.y.round() as u32,
+                width: fitted_bounds.width.round() as u32,
+                height: fitted_bounds.height.round() as u32,
             };
 
             // Begin render pass
@@ -412,12 +416,34 @@ impl Pipeline {
             render_pass.set_bind_group(0, bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
 
-            // Set scissor rectangle for clipping to the fitted bounds
+            // Debug all bounds:
+            eprintln!(
+                "Rendering shader with:\n\
+                - clip_bounds: {clip_bounds:?}\n\
+                - bounds: {bounds:?}\n\
+                - fitted_bounds: {fitted_bounds:?}\n\
+                - render_bounds: {render_bounds:?}\n\
+            "
+            );
+
+            // Set scissor rectangle to the bounds of our widget
             render_pass.set_scissor_rect(
                 render_bounds.x,
                 render_bounds.y,
                 render_bounds.width,
                 render_bounds.height,
+            );
+
+            // Set viewport to match the render bounds
+            // This is crucial - it maps the normalized device coordinates from
+            // the shader to the correct screen position
+            render_pass.set_viewport(
+                render_bounds.x as f32,
+                render_bounds.y as f32,
+                render_bounds.width as f32,
+                render_bounds.height as f32,
+                0.0,
+                1.0,
             );
 
             // Draw the full-screen quad (4 vertices in a triangle strip)

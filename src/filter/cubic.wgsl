@@ -3,9 +3,15 @@
 @group(0) @binding(1) var tex_sampler: sampler;
 @group(0) @binding(2) var<uniform> tex_info: vec4<f32>; // width, height, scale_x, scale_y
 
+// Output from vertex shader to fragment shader
+struct VertexOutput {
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>
+}
+
 // Vertex shader for rendering a full-screen quad
 @vertex
-fn vs_main(@builtin(vertex_index) vertex_index: u32) -> @builtin(position) vec4<f32> {
+fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     // Vertex positions for a triangle strip (quad)
     var positions = array<vec2<f32>, 4>(
         vec2<f32>(-1.0, -1.0), // bottom-left
@@ -14,7 +20,19 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> @builtin(position) vec4<
         vec2<f32>(1.0, 1.0)    // top-right
     );
     
-    return vec4<f32>(positions[vertex_index], 0.0, 1.0);
+    // UV coordinates corresponding to each vertex
+    var uvs = array<vec2<f32>, 4>(
+        vec2<f32>(0.0, 1.0), // bottom-left
+        vec2<f32>(1.0, 1.0), // bottom-right
+        vec2<f32>(0.0, 0.0), // top-left
+        vec2<f32>(1.0, 0.0)  // top-right
+    );
+    
+    var output: VertexOutput;
+    output.position = vec4<f32>(positions[vertex_index], 0.0, 1.0);
+    output.uv = uvs[vertex_index];
+    
+    return output;
 }
 
 // Implementation of Mitchell-Netravali cubic filter
@@ -38,7 +56,6 @@ fn mitchell(t: f32) -> f32 {
     }
 }
 
-
 // Sample the texture using cubic filtering
 fn cubic_sample(tex: texture_2d<f32>, samp: sampler, uv: vec2<f32>) -> vec4<f32> {
     // Get texture dimensions
@@ -53,7 +70,7 @@ fn cubic_sample(tex: texture_2d<f32>, samp: sampler, uv: vec2<f32>) -> vec4<f32>
     let offset = pixel - center;
     
     // Compute cubic weights
-    var w: array<vec4<f32>, 2>; // Changed from 'let' to 'var'
+    var w: array<vec4<f32>, 2>;
     
     w[0] = vec4<f32>(
         mitchell(1.0 + offset.x),
@@ -91,21 +108,7 @@ fn cubic_sample(tex: texture_2d<f32>, samp: sampler, uv: vec2<f32>) -> vec4<f32>
 }
 
 @fragment
-fn fs_main(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
-    // tex_info.x = texture width
-    // tex_info.y = texture height
-    // tex_info.z = scale_x 
-    // tex_info.w = scale_y
-    
-    // Convert position to normalized coordinates in the output space
-    let bounds_uv = vec2<f32>(
-        pos.x / (tex_info.x / tex_info.z),
-        pos.y / (tex_info.y / tex_info.w)
-    );
-    
-    // Use proper UV coordinates
-    let uv = vec2<f32>(bounds_uv.x, bounds_uv.y);
-    
+fn fs_main(@builtin(position) pos: vec4<f32>, @location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     // Apply cubic filtering if downsampling
     if (tex_info.z > 1.0 || tex_info.w > 1.0) {
         return cubic_sample(texture, tex_sampler, uv);
