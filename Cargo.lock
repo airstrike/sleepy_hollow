@@ -686,7 +686,7 @@ checksum = "75b325c5dbd37f80359721ad39aca5a29fb04c89279657cffdda8736d0c0b9d2"
 [[package]]
 name = "dpi"
 version = "0.1.1"
-source = "git+https://github.com/iced-rs/winit.git?rev=11414b6aa45699f038114e61b4ddf5102b2d3b4b#11414b6aa45699f038114e61b4ddf5102b2d3b4b"
+source = "git+https://github.com/airstrike/winit.git?branch=v0.30.x#f40380056516aafe2cd680b1325b3d669c7ebbc5"
 
 [[package]]
 name = "drm"
@@ -1395,6 +1395,7 @@ dependencies = [
 [[package]]
 name = "iced"
 version = "0.14.0-dev"
+source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -1408,6 +1409,7 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.14.0-dev"
+source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
 dependencies = [
  "bitflags 2.9.0",
  "bytes",
@@ -1425,6 +1427,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.14.0-dev"
+source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
 dependencies = [
  "futures",
  "iced_core",
@@ -1438,6 +1441,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.14.0-dev"
+source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
 dependencies = [
  "bitflags 2.9.0",
  "bytemuck",
@@ -1458,6 +1462,7 @@ dependencies = [
 [[package]]
 name = "iced_renderer"
 version = "0.14.0-dev"
+source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
 dependencies = [
  "iced_graphics",
  "iced_tiny_skia",
@@ -1469,6 +1474,7 @@ dependencies = [
 [[package]]
 name = "iced_runtime"
 version = "0.14.0-dev"
+source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
 dependencies = [
  "bytes",
  "iced_core",
@@ -1481,6 +1487,7 @@ dependencies = [
 [[package]]
 name = "iced_tiny_skia"
 version = "0.14.0-dev"
+source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
 dependencies = [
  "bytemuck",
  "cosmic-text",
@@ -1496,6 +1503,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.14.0-dev"
+source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
 dependencies = [
  "bitflags 2.9.0",
  "bytemuck",
@@ -1515,6 +1523,7 @@ dependencies = [
 [[package]]
 name = "iced_widget"
 version = "0.14.0-dev"
+source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
 dependencies = [
  "iced_renderer",
  "iced_runtime",
@@ -1529,6 +1538,7 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.14.0-dev"
+source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
 dependencies = [
  "iced_futures",
  "iced_graphics",
@@ -3433,24 +3443,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shader_filter"
-version = "0.1.0"
-dependencies = [
- "bytemuck",
- "chrono",
- "cosmic-text",
- "iced",
- "image",
- "palette",
- "png",
- "rand 0.9.0",
- "reqwest",
- "sipper",
- "tokio",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "sharded-slab"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3522,6 +3514,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f92a496fb766b417c996b9c5e57daf2f7ad3b0bebe1ccfca4856390e3d3bb67"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "sleepy_hollow"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "chrono",
+ "cosmic-text",
+ "iced",
+ "image",
+ "palette",
+ "png",
+ "rand 0.9.0",
+ "reqwest",
+ "sipper",
+ "tokio",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -5073,7 +5083,7 @@ checksum = "271414315aff87387382ec3d271b52d7ae78726f5d44ac98b4f4030c91880486"
 [[package]]
 name = "winit"
 version = "0.30.8"
-source = "git+https://github.com/iced-rs/winit.git?rev=11414b6aa45699f038114e61b4ddf5102b2d3b4b#11414b6aa45699f038114e61b4ddf5102b2d3b4b"
+source = "git+https://github.com/airstrike/winit.git?branch=v0.30.x#f40380056516aafe2cd680b1325b3d669c7ebbc5"
 dependencies = [
  "ahash",
  "android-activity",

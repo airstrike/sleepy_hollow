@@ -1,5 +1,5 @@
 [package]
-name = "shader_filter"
+name = "sleepy_hollow"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,8 +7,7 @@ edition = "2024"
 bytemuck = "1.22.0"
 chrono = "0.4.39"
 cosmic-text = "0.13.2"
-# iced = { git = "https://github.com/iced-rs/iced.git", branch = "master", default-features = false, features = [
-iced = { path = "../iced", default-features = false, features = [
+iced = { git = "https://github.com/airstrike/iced.git", branch = "master", default-features = false, features = [
     "lazy",
     "advanced",
     "canvas",
