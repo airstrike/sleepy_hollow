@@ -18,16 +18,18 @@ pub enum Filter {
     Cubic,
     #[default]
     Lanczos,
+    Gaussian,
 }
 
 impl Filter {
-    pub const ALL: [Filter; 2] = [Filter::Cubic, Filter::Lanczos];
+    pub const ALL: [Filter; 3] = [Filter::Cubic, Filter::Lanczos, Filter::Gaussian];
     
     /// Returns the name of the filter as a string
     pub fn name(&self) -> &'static str {
         match self {
             Filter::Cubic => "cubic",
             Filter::Lanczos => "lanczos",
+            Filter::Gaussian => "gaussian",
         }
     }
     
@@ -41,6 +43,7 @@ impl Filter {
         match self {
             Filter::Cubic => include_str!("filter/cubic.wgsl"),
             Filter::Lanczos => include_str!("filter/lanczos.wgsl"),
+            Filter::Gaussian => include_str!("filter/gaussian.wgsl"),
         }
     }
     
@@ -131,6 +134,7 @@ pub struct Primitive {
 // Define pipeline types for each filter to allow storing them separately in storage
 struct CubicPipeline(Pipeline);
 struct LanczosPipeline(Pipeline);
+struct GaussianPipeline(Pipeline);
 
 impl shader::Primitive for Primitive {
     fn prepare(
@@ -146,6 +150,7 @@ impl shader::Primitive for Primitive {
         let has_pipeline = match self.filter {
             Filter::Cubic => storage.has::<CubicPipeline>(),
             Filter::Lanczos => storage.has::<LanczosPipeline>(),
+            Filter::Gaussian => storage.has::<GaussianPipeline>(),
         };
         
         // Create the pipeline if it doesn't exist yet
@@ -163,6 +168,7 @@ impl shader::Primitive for Primitive {
             match self.filter {
                 Filter::Cubic => storage.store(CubicPipeline(new_pipeline)),
                 Filter::Lanczos => storage.store(LanczosPipeline(new_pipeline)),
+                Filter::Gaussian => storage.store(GaussianPipeline(new_pipeline)),
             }
         }
 
@@ -173,6 +179,7 @@ impl shader::Primitive for Primitive {
         let pipeline = match self.filter {
             Filter::Cubic => &mut storage.get_mut::<CubicPipeline>().unwrap().0,
             Filter::Lanczos => &mut storage.get_mut::<LanczosPipeline>().unwrap().0,
+            Filter::Gaussian => &mut storage.get_mut::<GaussianPipeline>().unwrap().0,
         };
         
         eprintln!(
@@ -208,6 +215,7 @@ impl shader::Primitive for Primitive {
         let pipeline = match self.filter {
             Filter::Cubic => &storage.get::<CubicPipeline>().unwrap().0,
             Filter::Lanczos => &storage.get::<LanczosPipeline>().unwrap().0,
+            Filter::Gaussian => &storage.get::<GaussianPipeline>().unwrap().0,
         };
 
         pipeline.render(encoder, target, clip_bounds, self.bounds, self.content_fit);
