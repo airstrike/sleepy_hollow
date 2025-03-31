@@ -59,18 +59,18 @@ fn mitchell(t: f32) -> f32 {
 
 // Sample the texture using cubic filtering
 fn cubic_sample(tex: texture_2d<f32>, samp: sampler, uv: vec2<f32>) -> vec4<f32> {
-    // Get texture dimensions
+    // texture dimensions
     let width = tex_info.x;
     let height = tex_info.y;
     
-    // Calculate pixel position in texture
+    // pixel position in texture
     let pixel = vec2<f32>(uv.x * width, uv.y * height) - 0.5;
     let center = floor(pixel);
     
-    // Calculate the fractional offset
+    // fractional offset
     let offset = pixel - center;
     
-    // Compute cubic weights
+    // cubic weights
     var w: array<vec4<f32>, 2>;
     
     w[0] = vec4<f32>(
@@ -87,7 +87,7 @@ fn cubic_sample(tex: texture_2d<f32>, samp: sampler, uv: vec2<f32>) -> vec4<f32>
         mitchell(2.0 - offset.y)
     );
     
-    // Sample 16 texels from the texture
+    // sample 16 texels from the texture
     var color = vec4<f32>(0.0);
     var weight_sum = 0.0;
     
@@ -108,13 +108,13 @@ fn cubic_sample(tex: texture_2d<f32>, samp: sampler, uv: vec2<f32>) -> vec4<f32>
         }
     }
     
-    // Ensure proper normalization (important for modified parameters)
+    // normalization
     return color / weight_sum;
 }
 
 @fragment
 fn fs_main(@builtin(position) pos: vec4<f32>, @location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
-    // Apply cubic filtering if downsampling
+    // apply cubic filtering if downsampling
     if (tex_info.z > 1.0 || tex_info.w > 1.0) {
         return cubic_sample(texture, tex_sampler, uv);
     } else {

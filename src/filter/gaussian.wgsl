@@ -80,7 +80,7 @@ fn gaussian_sample(tex: texture_2d<f32>, samp: sampler, uv: vec2<f32>) -> vec4<f
         total_weight_y += weights_y[idx];
     }
     
-    // Normalize weights to ensure they sum to 1.0
+    // Normalize weights
     for (var i = 0; i < 2*KERNEL_RADIUS+1; i++) {
         weights_x[i] /= total_weight_x;
         weights_y[i] /= total_weight_y; 
@@ -119,7 +119,7 @@ fn gaussian_sample(tex: texture_2d<f32>, samp: sampler, uv: vec2<f32>) -> vec4<f
 fn fs_main(@builtin(position) pos: vec4<f32>, @location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     // Apply Gaussian filtering if downsampling
     if (tex_info.z > 1.0 || tex_info.w > 1.0) {
-        // Return the pure Gaussian filtered result without tinting
+        // Return the pure Gaussian filtered result
         return gaussian_sample(texture, tex_sampler, uv);
     } else {
         // Return the unfiltered result when not downsampling

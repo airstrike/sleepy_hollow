@@ -23,7 +23,7 @@ pub enum Filter {
 
 impl Filter {
     pub const ALL: [Filter; 3] = [Filter::Cubic, Filter::Lanczos, Filter::Gaussian];
-    
+
     /// Returns the name of the filter as a string
     pub fn name(&self) -> &'static str {
         match self {
@@ -32,12 +32,12 @@ impl Filter {
             Filter::Gaussian => "gaussian",
         }
     }
-    
+
     /// Generates a label for a specific component with the filter name
     pub fn label(&self, component: &str) -> String {
         format!("{}_{}_filter", self.name(), component)
     }
-    
+
     /// Returns the shader source code for this filter
     pub fn shader_source(&self) -> &'static str {
         match self {
@@ -46,20 +46,18 @@ impl Filter {
             Filter::Gaussian => include_str!("filter/gaussian.wgsl"),
         }
     }
-    
+
     /// Creates a shader module for this filter
     pub fn create_shader_module(&self, device: &wgpu::Device) -> wgpu::ShaderModule {
-        // Log that we're creating a shader for a specific filter
         eprintln!("Creating shader module for filter: {:?}", self);
-        
+
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some(&self.label("shader")),
             source: wgpu::ShaderSource::Wgsl(self.shader_source().into()),
         });
-        
-        // Log that we've created the shader
+
         eprintln!("Created shader module: {:?}", shader);
-        
+
         shader
     }
 }
@@ -79,6 +77,7 @@ pub struct Shader {
 }
 
 impl Shader {
+    /// Create a new shader with the specified image data and size
     pub fn new(image_data: Vec<u8>, image_size: Size<u32>) -> Self {
         Self {
             image_data,
@@ -93,7 +92,7 @@ impl Shader {
         self.content_fit = content_fit;
         self
     }
-    
+
     /// Set the filter to use for downsampling
     pub fn filter(mut self, filter: Filter) -> Self {
         self.filter = filter;
@@ -131,7 +130,6 @@ pub struct Primitive {
     bounds: Rectangle,
 }
 
-// Define pipeline types for each filter to allow storing them separately in storage
 struct CubicPipeline(Pipeline);
 struct LanczosPipeline(Pipeline);
 struct GaussianPipeline(Pipeline);
@@ -146,24 +144,17 @@ impl shader::Primitive for Primitive {
         bounds: &Rectangle,
         viewport: &Viewport,
     ) {
-        // Check if we have the requested filter's pipeline
         let has_pipeline = match self.filter {
             Filter::Cubic => storage.has::<CubicPipeline>(),
             Filter::Lanczos => storage.has::<LanczosPipeline>(),
             Filter::Gaussian => storage.has::<GaussianPipeline>(),
         };
-        
-        // Create the pipeline if it doesn't exist yet
+
         if !has_pipeline {
             eprintln!("Creating new pipeline for filter: {:?}", self.filter);
-            
-            let new_pipeline = Pipeline::new(
-                self.filter,
-                device,
-                format,
-                viewport.physical_size(),
-            );
-            
+
+            let new_pipeline = Pipeline::new(self.filter, device, format, viewport.physical_size());
+
             // Store it with the appropriate wrapper type
             match self.filter {
                 Filter::Cubic => storage.store(CubicPipeline(new_pipeline)),
@@ -172,16 +163,15 @@ impl shader::Primitive for Primitive {
             }
         }
 
-        // Use actual bounds from the widget for proper target size
+        // Use bounds from the widget for proper target size
         let target_size = Size::new(bounds.width.round() as u32, bounds.height.round() as u32);
 
-        // Get the appropriate pipeline based on the current filter
         let pipeline = match self.filter {
             Filter::Cubic => &mut storage.get_mut::<CubicPipeline>().unwrap().0,
             Filter::Lanczos => &mut storage.get_mut::<LanczosPipeline>().unwrap().0,
             Filter::Gaussian => &mut storage.get_mut::<GaussianPipeline>().unwrap().0,
         };
-        
+
         eprintln!(
             "Preparing pipeline with:\n\
             - filter: {:?}\n\
@@ -192,7 +182,7 @@ impl shader::Primitive for Primitive {
             - viewport: {viewport:?}",
             self.filter, self.image_size, self.bounds, self.content_fit
         );
-        
+
         pipeline.prepare(
             device,
             queue,
@@ -211,7 +201,6 @@ impl shader::Primitive for Primitive {
         target: &wgpu::TextureView,
         clip_bounds: &Rectangle<u32>,
     ) {
-        // Get the appropriate pipeline based on the current filter
         let pipeline = match self.filter {
             Filter::Cubic => &storage.get::<CubicPipeline>().unwrap().0,
             Filter::Lanczos => &storage.get::<LanczosPipeline>().unwrap().0,
@@ -292,7 +281,7 @@ impl Pipeline {
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&filter.label("vertex_buffer")),
             contents: bytemuck::cast_slice(&[
-                // Positions       // UVs (these aren't actually used since they're hardcoded in the shader)
+                // Positions/UVs (these aren't actually used rn since hardcoded in the shader)
                 -1.0f32, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0,
             ]),
             usage: wgpu::BufferUsages::VERTEX,
@@ -514,7 +503,7 @@ impl Pipeline {
                 height: fitted_bounds.height.round() as u32,
             };
 
-            // Begin render pass
+            // Render pass
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(&self.filter.label("render_pass")),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -530,12 +519,11 @@ impl Pipeline {
                 timestamp_writes: None,
             });
 
-            // Set up the pipeline and resources
+            // set up pipeline and resources
             render_pass.set_pipeline(&self.pipeline);
             render_pass.set_bind_group(0, bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
 
-            // Debug all bounds:
             eprintln!(
                 "Rendering shader with:\n\
                 - clip_bounds: {clip_bounds:?}\n\
@@ -545,7 +533,7 @@ impl Pipeline {
             "
             );
 
-            // Set scissor rectangle to the bounds of our widget
+            // Set scissor rectangle to the bounds widget
             render_pass.set_scissor_rect(
                 render_bounds.x,
                 render_bounds.y,
@@ -554,7 +542,7 @@ impl Pipeline {
             );
 
             // Set viewport to match the render bounds
-            // This is crucial - it maps the normalized device coordinates from
+            // This maps the normalized device coordinates from
             // the shader to the correct screen position
             render_pass.set_viewport(
                 render_bounds.x as f32,
