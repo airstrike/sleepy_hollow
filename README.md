@@ -1,71 +1,71 @@
-# High-Quality Image Downsampling with Custom Shader in Iced
+<div align="center">
 
-This project implements a high-quality cubic filter for downsampling images in an Iced application. Instead of relying on the default Linear filter provided by wgpu, this implementation uses the Mitchell-Netravali cubic filter algorithm for superior downsampling results.
+# Sleepy Hollow
 
-## Why Custom Downsampling?
+[![Made with iced](https://iced.rs/badge.svg)](https://github.com/iced-rs/iced)
 
-WGPU (and by extension, Iced) only supports two basic filtering modes for image scaling:
-- Nearest (creates pixelated results when downscaling)
-- Linear (creates blurry results when downscaling)
+A shader filter exploration project comparing custom WGSL downsampling methods with native wgpu options.
 
-For high-quality image downsampling, more sophisticated algorithms like cubic filters produce significantly better results by considering more neighboring pixels and using more complex weighting functions.
+*Warning: may cause uncontrollable excitement about shader programming and image processing techniques.*
+
+</div>
+
+## About
+
+This project explores custom WGSL shaders for image downsampling in Rust, using a forked version of the `iced` UI framework. It was created to experiment with shader-based alternatives to wgpu's native image downscaling options (which only offers linear and nearest filters).
+
+## Project Goals
+
+- Explore how to write and implement custom WGSL shaders
+- Compare custom shader downsampling to wgpu's native options
+- Utilize the headless renderer from `iced` to process images with shaders
+- Provide practical examples of cubic (Mitchell-Netravali) and Gaussian filters
 
 ## Implementation Details
 
 ### Core Components
 
-1. **CubicFilter Struct** (`filter.rs`):
-   - A wrapper that holds the raw image data and size information
-   - Provides a convenient API for creating filtered image elements
+1. **Filter Implementation** (`filter.rs`):
+   - Manages different filter implementations
+   - Handles shader setup and rendering
 
-2. **Custom Shader** (`shader.rs`):
-   - Implements the WGPU pipeline and shader program
-   - Manages texture creation and rendering
+2. **Shader Files** (`filter/*.wgsl`):
+   - Various WGSL shader implementations including:
+     - Cubic (Mitchell-Netravali)
+     - Gaussian
+     - Lanczos
 
-3. **WGSL Shader Code** (`cubic.wgsl`):
-   - Implements the Mitchell-Netravali cubic filter algorithm
-   - Samples 16 texels for each output pixel to compute high-quality results
+3. **Simulator** (`simulator.rs`):
+   - Demo application comparing different filtering methods
 
-### Mitchell-Netravali Filter
+## Our `iced` fork
 
-The implemented cubic filter uses the Mitchell-Netravali algorithm with parameters B=1/3, C=1/3, which provides a good balance between sharpness and artifact reduction. The filter works by:
+This project uses a custom fork of the `iced` UI framework to access the `UserInterface` type, which is not exposed in the upstream version. This allows us to reuse our Simulator instead of having to rebuild it every time like in `iced_test`.
 
-1. Sampling a 4×4 grid of texels around each target pixel
-2. Weighting each texel's contribution based on its distance using the Mitchell-Netravali cubic function
-3. Combining these weighted values to produce the final pixel color
+## Getting Started
 
-## Usage
+To run the project:
 
-To use the high-quality downsampling, replace standard image elements:
-
-```rust
-// Standard image with linear filtering
-let image_element = iced::widget::image(image_handle)
-    .content_fit(ContentFit::Contain)
-    .width(container_width);
-
-// Replace with cubic filtered image
-let image_element = filter::cubic_filtered_image(
-    image_data,              // Raw RGBA data
-    image_size,              // Original image size
-    Size::new(width, height) // Target size
-);
+```bash
+cargo run --release
 ```
 
-## Performance Considerations
+The application demonstrates a toggler to compare different filtering methods.
 
-The custom cubic filter is more computationally expensive than the built-in Linear filter:
-- It samples 16 texels per output pixel (vs. 4 for bilinear)
-- It performs more complex calculations per pixel
+## Performance Notes
 
-However, modern GPUs can handle this filtering efficiently for most use cases. For performance-critical applications, consider:
+Different shader filters have varying performance characteristics:
+- Custom filters are more computationally expensive than built-in wgpu filters
+- Results quality varies between implementations
+- The project includes performance measurement for comparing approaches
 
-1. Only using the cubic filter for final output or when quality is important
-2. Falling back to the Linear filter for real-time operations
+## Educational Focus
 
-## Future Improvements
+This project is primarily educational, focusing on:
+- Understanding shader development with WGSL
+- Learning how to integrate custom shaders with the `iced` framework
+- Exploring image processing techniques in GPU shaders
 
-Potential enhancements could include:
-- Support for different cubic filter parameters
-- Optimizations for multi-pass filtering on extremely large images
-- Additional high-quality filter algorithms (Lanczos, etc.)
+## License
+
+MIT
