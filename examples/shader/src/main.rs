@@ -7,11 +7,11 @@ use iced::widget::{
 use iced::{ContentFit, Element, Fill, Subscription, Task};
 use sipper::{Never, Sipper, StreamExt, sipper};
 
+use sleepy_hollow::simulator;
 use std::time::Instant;
 
 mod filter;
 mod sample;
-mod simulator;
 
 use sample::PngScreenshot;
 
