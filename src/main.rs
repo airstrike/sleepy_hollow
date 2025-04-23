@@ -16,7 +16,8 @@ mod simulator;
 use sample::PngScreenshot;
 
 pub fn main() -> iced::Result {
-    iced::application("iced • shader downsampler", App::update, App::view)
+    iced::application(App::default, App::update, App::view)
+        .title("iced • shader downsampler")
         .subscription(App::subscription)
         .run()
 }

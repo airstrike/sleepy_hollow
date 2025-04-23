@@ -1,9 +1,9 @@
 //! Simulate `iced` user interfaces and take screenshots of them
 use iced::advanced::renderer;
 use iced::advanced::renderer::Headless;
-use iced::advanced::runtime::{UserInterface, user_interface};
 use iced::theme::Base;
 use iced::{self, Element, Size, mouse, window};
+use iced_runtime::{UserInterface, user_interface};
 use std::borrow::Cow;
 use std::env;
 

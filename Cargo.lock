@@ -216,6 +216,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
+name = "bincode"
+version = "1.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "bit-set"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -573,6 +582,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "cosmic-text"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da46a9d5a8905cc538a4a5bceb6a4510de7a51049c5588c0114efce102bcbbe8"
+dependencies = [
+ "bitflags 2.9.0",
+ "fontdb 0.16.2",
+ "log",
+ "rangemap",
+ "rustc-hash 1.1.0",
+ "rustybuzz",
+ "self_cell",
+ "smol_str",
+ "swash",
+ "sys-locale",
+ "ttf-parser 0.21.1",
+ "unicode-bidi",
+ "unicode-linebreak",
+ "unicode-script",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "crc32fast"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -615,9 +647,9 @@ checksum = "43da5946c66ffcc7745f48db692ffbb10a83bfe0afd96235c5c2a4fb23994929"
 [[package]]
 name = "cryoglyph"
 version = "0.1.0"
-source = "git+https://github.com/iced-rs/cryoglyph.git?rev=be2defe4a13fd7c97c6f4c81e8e085463eb578dc#be2defe4a13fd7c97c6f4c81e8e085463eb578dc"
+source = "git+https://github.com/iced-rs/cryoglyph.git?rev=a456d1c17bbcf33afcca41d9e5e299f9f1193819#a456d1c17bbcf33afcca41d9e5e299f9f1193819"
 dependencies = [
- "cosmic-text",
+ "cosmic-text 0.14.2",
  "etagere",
  "lru",
  "rustc-hash 2.1.1",
@@ -686,7 +718,7 @@ checksum = "75b325c5dbd37f80359721ad39aca5a29fb04c89279657cffdda8736d0c0b9d2"
 [[package]]
 name = "dpi"
 version = "0.1.1"
-source = "git+https://github.com/airstrike/winit.git?branch=v0.30.x#f40380056516aafe2cd680b1325b3d669c7ebbc5"
+source = "git+https://github.com/iced-rs/winit.git?rev=11414b6aa45699f038114e61b4ddf5102b2d3b4b#11414b6aa45699f038114e61b4ddf5102b2d3b4b"
 
 [[package]]
 name = "drm"
@@ -990,7 +1022,6 @@ dependencies = [
  "futures-core",
  "futures-task",
  "futures-util",
- "num_cpus",
 ]
 
 [[package]]
@@ -1240,12 +1271,6 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
 name = "hermit-abi"
-version = "0.3.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d231dfb89cfffdbc30e7fc41579ed6066ad03abda9e567ccafae602b97ec5024"
-
-[[package]]
-name = "hermit-abi"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fbf6a919d6cf397374f7dfeeea91d974c7c0a7221d0d0f4f20d859d329e53fcc"
@@ -1395,11 +1420,14 @@ dependencies = [
 [[package]]
 name = "iced"
 version = "0.14.0-dev"
-source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
+source = "git+https://github.com/iced-rs/iced.git?branch=master#50cc94d944ada88bf3d7fcd1d2741b7104b9b1d1"
 dependencies = [
  "iced_core",
+ "iced_debug",
+ "iced_devtools",
  "iced_futures",
  "iced_renderer",
+ "iced_runtime",
  "iced_widget",
  "iced_winit",
  "image",
@@ -1407,9 +1435,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "iced_beacon"
+version = "0.14.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?branch=master#50cc94d944ada88bf3d7fcd1d2741b7104b9b1d1"
+dependencies = [
+ "bincode",
+ "futures",
+ "iced_core",
+ "log",
+ "semver",
+ "serde",
+ "thiserror 1.0.69",
+ "tokio",
+]
+
+[[package]]
 name = "iced_core"
 version = "0.14.0-dev"
-source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
+source = "git+https://github.com/iced-rs/iced.git?branch=master#50cc94d944ada88bf3d7fcd1d2741b7104b9b1d1"
 dependencies = [
  "bitflags 2.9.0",
  "bytes",
@@ -1417,17 +1460,37 @@ dependencies = [
  "lilt",
  "log",
  "num-traits",
- "palette",
  "rustc-hash 2.1.1",
+ "serde",
  "smol_str",
  "thiserror 1.0.69",
  "web-time",
 ]
 
 [[package]]
+name = "iced_debug"
+version = "0.14.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?branch=master#50cc94d944ada88bf3d7fcd1d2741b7104b9b1d1"
+dependencies = [
+ "iced_beacon",
+ "iced_core",
+ "log",
+]
+
+[[package]]
+name = "iced_devtools"
+version = "0.14.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?branch=master#50cc94d944ada88bf3d7fcd1d2741b7104b9b1d1"
+dependencies = [
+ "iced_debug",
+ "iced_program",
+ "iced_widget",
+]
+
+[[package]]
 name = "iced_futures"
 version = "0.14.0-dev"
-source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
+source = "git+https://github.com/iced-rs/iced.git?branch=master#50cc94d944ada88bf3d7fcd1d2741b7104b9b1d1"
 dependencies = [
  "futures",
  "iced_core",
@@ -1441,11 +1504,11 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.14.0-dev"
-source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
+source = "git+https://github.com/iced-rs/iced.git?branch=master#50cc94d944ada88bf3d7fcd1d2741b7104b9b1d1"
 dependencies = [
  "bitflags 2.9.0",
  "bytemuck",
- "cosmic-text",
+ "cosmic-text 0.14.2",
  "half",
  "iced_core",
  "iced_futures",
@@ -1460,9 +1523,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "iced_program"
+version = "0.14.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?branch=master#50cc94d944ada88bf3d7fcd1d2741b7104b9b1d1"
+dependencies = [
+ "iced_graphics",
+ "iced_runtime",
+]
+
+[[package]]
 name = "iced_renderer"
 version = "0.14.0-dev"
-source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
+source = "git+https://github.com/iced-rs/iced.git?branch=master#50cc94d944ada88bf3d7fcd1d2741b7104b9b1d1"
 dependencies = [
  "iced_graphics",
  "iced_tiny_skia",
@@ -1474,23 +1546,24 @@ dependencies = [
 [[package]]
 name = "iced_runtime"
 version = "0.14.0-dev"
-source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
+source = "git+https://github.com/iced-rs/iced.git?branch=master#50cc94d944ada88bf3d7fcd1d2741b7104b9b1d1"
 dependencies = [
  "bytes",
  "iced_core",
+ "iced_debug",
  "iced_futures",
  "raw-window-handle",
- "sipper",
  "thiserror 1.0.69",
 ]
 
 [[package]]
 name = "iced_tiny_skia"
 version = "0.14.0-dev"
-source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
+source = "git+https://github.com/iced-rs/iced.git?branch=master#50cc94d944ada88bf3d7fcd1d2741b7104b9b1d1"
 dependencies = [
  "bytemuck",
- "cosmic-text",
+ "cosmic-text 0.14.2",
+ "iced_debug",
  "iced_graphics",
  "kurbo 0.10.4",
  "log",
@@ -1503,7 +1576,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.14.0-dev"
-source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
+source = "git+https://github.com/iced-rs/iced.git?branch=master#50cc94d944ada88bf3d7fcd1d2741b7104b9b1d1"
 dependencies = [
  "bitflags 2.9.0",
  "bytemuck",
@@ -1511,6 +1584,7 @@ dependencies = [
  "futures",
  "glam",
  "guillotiere",
+ "iced_debug",
  "iced_graphics",
  "log",
  "lyon",
@@ -1523,7 +1597,7 @@ dependencies = [
 [[package]]
 name = "iced_widget"
 version = "0.14.0-dev"
-source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
+source = "git+https://github.com/iced-rs/iced.git?branch=master#50cc94d944ada88bf3d7fcd1d2741b7104b9b1d1"
 dependencies = [
  "iced_renderer",
  "iced_runtime",
@@ -1538,11 +1612,10 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.14.0-dev"
-source = "git+https://github.com/airstrike/iced.git?branch=master#9ecbd2238f4d4947a790878f8f6fc3bc3ee5c317"
+source = "git+https://github.com/iced-rs/iced.git?branch=master#50cc94d944ada88bf3d7fcd1d2741b7104b9b1d1"
 dependencies = [
- "iced_futures",
- "iced_graphics",
- "iced_runtime",
+ "iced_debug",
+ "iced_program",
  "log",
  "rustc-hash 2.1.1",
  "thiserror 1.0.69",
@@ -2299,16 +2372,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num_cpus"
-version = "1.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4161fcb6d602d4d2081af7c3a45852d875a03dd337a6bfdd6e06407b61342a43"
-dependencies = [
- "hermit-abi 0.3.9",
- "libc",
-]
-
-[[package]]
 name = "num_enum"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2823,7 +2886,7 @@ checksum = "a604568c3202727d1507653cb121dbd627a58684eb09a820fd746bee38b4442f"
 dependencies = [
  "cfg-if",
  "concurrent-queue",
- "hermit-abi 0.4.0",
+ "hermit-abi",
  "pin-project-lite",
  "rustix 0.38.44",
  "tracing",
@@ -3390,6 +3453,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2fdfc24bc566f839a2da4c4295b82db7d25a24253867d5c64355abb5799bdbe"
 
 [[package]]
+name = "semver"
+version = "1.0.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56e6fa9c48d24d85fb3de5ad847117517440f6beceb7798af16b4a87d616b8d0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde"
 version = "1.0.219"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3522,8 +3594,9 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "chrono",
- "cosmic-text",
+ "cosmic-text 0.13.2",
  "iced",
+ "iced_runtime",
  "image",
  "palette",
  "png",
@@ -3960,7 +4033,19 @@ dependencies = [
  "mio",
  "pin-project-lite",
  "socket2",
+ "tokio-macros",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "tokio-macros"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e06d43f1345a3bcd39f6a56dbb7dcab2ba47e68e8ac134855e7e2bdbaf8cab8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -5083,7 +5168,7 @@ checksum = "271414315aff87387382ec3d271b52d7ae78726f5d44ac98b4f4030c91880486"
 [[package]]
 name = "winit"
 version = "0.30.8"
-source = "git+https://github.com/airstrike/winit.git?branch=v0.30.x#f40380056516aafe2cd680b1325b3d669c7ebbc5"
+source = "git+https://github.com/iced-rs/winit.git?rev=11414b6aa45699f038114e61b4ddf5102b2d3b4b#11414b6aa45699f038114e61b4ddf5102b2d3b4b"
 dependencies = [
  "ahash",
  "android-activity",

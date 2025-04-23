@@ -7,7 +7,7 @@ edition = "2024"
 bytemuck = "1.22.0"
 chrono = "0.4.39"
 cosmic-text = "0.13.2"
-iced = { git = "https://github.com/airstrike/iced.git", branch = "master", default-features = false, features = [
+iced = { git = "https://github.com/iced-rs/iced.git", branch = "master", default-features = false, features = [
     "lazy",
     "advanced",
     "canvas",
@@ -17,6 +17,7 @@ iced = { git = "https://github.com/airstrike/iced.git", branch = "master", defau
     "wgpu",
     "svg",
 ] }
+iced_runtime = { git = "https://github.com/iced-rs/iced.git", branch = "master" }
 image = "0.25.5"
 palette = "0.7.6"
 png = "0.17.16"
