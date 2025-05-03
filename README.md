@@ -38,10 +38,6 @@ This project explores custom WGSL shaders for image downsampling in Rust, using 
 3. **Simulator** (`simulator.rs`):
    - Demo application comparing different filtering methods
 
-## Our `iced` fork
-
-This project uses a custom fork of the `iced` UI framework to access the `UserInterface` type, which is not exposed in the upstream version. This allows us to reuse our Simulator instead of having to rebuild it every time like in `iced_test`.
-
 ## Getting Started
 
 To run the project:
